@@ -1,0 +1,15 @@
+---
+- name: enable and start patroni-service
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: patroni
+    enabled: true
+    state: started
+  tags:
+    - patroni-start
+
+- name: wait for init cluster
+  ansible.builtin.pause:
+    seconds: 15
+  tags:
+    - patroni-start

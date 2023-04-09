@@ -1,0 +1,4 @@
+[cluster]
+node-1 ansible_host=192.168.122.90 keepalived_priority=1
+node-2 ansible_host=192.168.122.91 keepalived_priority=2
+node-3 ansible_host=192.168.122.125 keepalived_priority=3

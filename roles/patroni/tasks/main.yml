@@ -1,0 +1,82 @@
+---
+- name: install the necesessary packages
+  ansible.builtin.dnf: 
+    state: present
+    name: 
+    - gcc
+    - "@postgresql:9.6"
+    - python3-pip
+    - python3-devel
+    - libpq-devel
+  tags: 
+    - install
+
+- name: Upgrade pip
+  ansible.builtin.pip: 
+    name: pip
+    state: present
+    extra_args: --upgrade
+  tags: 
+    - install
+
+- name: install the necesessary packages with pip
+  ansible.builtin.pip: 
+    name: 
+      - psycopg2
+      - patroni[etcd]
+    state: present
+  tags: 
+    - install
+
+- name: create dir
+  ansible.builtin.file:
+    name: "{{ item }}"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: 0700
+  loop:
+    - /var/lib/patroni
+    - /var/lib/patroni/data
+  tags: 
+    - install
+    - dir
+
+- name: put config-file
+  ansible.builtin.template:
+    src: patroni.yml.j2
+    dest: /etc/patroni.yml
+  tags: 
+    - install
+    - config
+
+- name: allow 8008,5432 ports at firewalld
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  loop:
+    - 8008/tcp
+    - 5432/tcp
+  tags: 
+    - install
+    - firewalld
+
+- name: put systemd-service file
+  ansible.builtin.copy:
+    src: patroni.service
+    dest: /etc/systemd/system/patroni.service
+  tags: 
+    - install
+    - patroni-service
+    - systemd
+
+- name: disable postgresql-service
+  ansible.builtin.systemd:
+    name: postgresql
+    enabled: false
+    state: stopped
+  tags:
+    - install
+    - systemd

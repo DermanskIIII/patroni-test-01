@@ -1,0 +1,97 @@
+---
+- name: put etcd binaries
+  block:
+    - name: create dir in /tmp
+      ansible.builtin.file:
+        name: /tmp/etcd
+        state: directory
+    - name: unarchive
+      ansible.builtin.unarchive:
+        remote_src: no
+        src: etcd-v3.5.7-linux-amd64.tar.gz
+        dest: /tmp/etcd
+    - name: copy files
+      ansible.builtin.copy:
+        remote_src: true
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: 0755
+      loop:
+        - { src: "/tmp/etcd/etcd-v3.5.7-linux-amd64/etcd", dest: "/usr/local/bin/etcd" }
+        - { src: "/tmp/etcd/etcd-v3.5.7-linux-amd64/etcdctl", dest: "/usr/local/bin/etcdctl" }
+        - { src: "/tmp/etcd/etcd-v3.5.7-linux-amd64/etcdutl", dest: "/usr/local/bin/etcdutl" }
+    - name: clean
+      ansible.builtin.file:
+        name: /tmp/etcd
+        state: absent
+
+- name: add etcd user and group
+  block:
+    - name: add group
+      ansible.builtin.group:
+        name: etcd
+        system: true
+        state: present
+    - name: add user
+      ansible.builtin.user:
+        name: etcd
+        shell: /usr/sbin/nologin
+        state: present
+
+- name: create dir
+  ansible.builtin.file:
+    name: /var/lib/etcd
+    state: directory
+    owner: etcd
+    group: etcd
+    mode: 0775
+
+- name: SELinux module import and apply context 
+  block:
+    - name: put necessary files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      loop:
+        - { src: "etcd.pp", dest: "/tmp/etcd.pp" }
+        - { src: "etcd.te", dest: "/tmp/etcd.te" }
+    - name: import SELinux moduel .pp-file
+      ansible.builtin.command:
+        cmd: semodule -i /tmp/etcd.pp
+    - name: Apply context
+      ansible.builtin.command: 
+        cmd: restorecon -Rv /usr/local/bin/etcd
+    - name: clean
+      ansible.builtin.file:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/etcd.pp
+        - /tmp/etcd.te
+
+- name: put config-file
+  ansible.builtin.template:
+    src: etcd.conf.yml.j2
+    dest: /usr/local/etc/etcd.conf.yml
+  tags: config
+
+- name: allow ports at firewalld
+  ansible.posix.firewalld:
+    port: 2379-2380/tcp
+    state: enabled
+    immediate: true
+    permanent: true
+  tags: firewalld
+
+- name: put systemd-service file
+  ansible.builtin.copy:
+    src: etcd.service
+    dest: /etc/systemd/system/etcd.service
+
+- name: enable and start etcd-service
+  ansible.builtin.systemd:
+    daemon_reload: true
+    name: etcd
+    enabled: true
+    state: started
+  tags: start

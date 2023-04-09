@@ -1,0 +1,70 @@
+scope: pgsql
+namespace: /cluster/
+name: {{ inventory_hostname }}
+
+restapi:
+    listen: {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:8008
+    connect_address: {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:8008
+
+etcd3:
+    hosts: {% for host in groups['cluster'] %}{% if loop.last %}{{ hostvars[host].ansible_default_ipv4.address }}:2379{% else %}{{ hostvars[host].ansible_default_ipv4.address }}:2379,{% endif %}{% endfor %}
+
+bootstrap:
+    dcs:
+        ttl: 30
+        loop_wait: 10
+        maximum_lag_on_failover: 1048576
+        postgresql:
+            use_pg_rewind: true
+            use_slots: true
+            parameters:
+                archive_mode: "on"
+                wal_level: hot_standby
+                max_wal_senders: 10
+                wal_keep_segments: 8
+                archive_timeout: 1800s
+                max_replication_slots: 5
+                hot_standby: "on"
+                wal_log_hints: "on"
+
+    initdb:
+    - encoding: UTF8
+    - data-checksums
+    - locale: en_US.UTF8
+    pg_hba:
+    - host replication postgres 127.0.0.1/8 md5
+{% for host in groups['cluster'] %}
+    - host replication postgres {{ hostvars[host].ansible_default_ipv4.address }}/24 md5
+{% endfor %}
+    - host all all 0.0.0.0/0 md5
+
+    users:
+        admin:
+            password: admin
+            options:
+                - createrole
+                - createdb
+
+postgresql:
+    listen: {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:5432
+    connect_address: {{ hostvars[inventory_hostname].ansible_default_ipv4.address }}:5432
+    data_dir: /var/lib/patroni/data
+    bin_dir:  /usr/bin/
+    pgpass: /var/lib/patroni/.pgpass
+    authentication:
+        replication:
+            username: postgres
+            password: postgres
+        superuser:
+            username: postgres
+            password: postgres
+    create_replica_methods:
+        basebackup:
+            checkpoint: 'fast'
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+

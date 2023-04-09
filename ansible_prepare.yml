@@ -1,0 +1,21 @@
+---
+- hosts: all
+  tasks:
+  - user:
+      name: ansible
+      state: present
+  - lineinfile:
+      path: /etc/sudoers.d/ansible
+      create: yes
+      state: present
+      line: 'ansible ALL=(ALL:ALL) NOPASSWD:ALL'
+  - file:
+      path: /home/ansible/.ssh
+      state: directory
+      owner: ansible
+      group: ansible
+  - lineinfile:
+      path: /home/ansible/.ssh/authorized_keys
+      create: yes
+      state: present
+      line: 'ssh-rsa ...'

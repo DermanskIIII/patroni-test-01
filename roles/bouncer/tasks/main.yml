@@ -1,0 +1,62 @@
+---
+- name: install haproxy and keepalived
+  ansible.builtin.dnf:
+    name: 
+      - haproxy
+      - keepalived
+
+- name: put haproxy config-file
+  ansible.builtin.template: 
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop: 
+    - { src: haproxy.cfg.j2, dest: /etc/haproxy/haproxy.cfg }
+    - { src: keepalived.conf.j2, dest: /etc/keepalived/keepalived.conf }
+
+- name: allow port at firewalld
+  ansible.posix.firewalld:
+    port: 5000/tcp
+    state: enabled
+    immediate: true
+    permanent: true
+  tags: firewalld
+
+- name: allow vrrp-proto at firewalld
+  ansible.posix.firewalld:
+    rich_rule: rule protocol value="vrrp" accept
+    state: enabled
+    immediate: true
+    permanent: true
+  tags: firewalld
+
+- name: SELinux module import and apply context 
+  block:
+    - name: put necessary files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      loop:
+        - { src: "haproxy.pp", dest: "/tmp/haproxy.pp" }
+        - { src: "haproxy.te", dest: "/tmp/haproxy.te" }
+    - name: import SELinux moduel .pp-file
+      ansible.builtin.command:
+        cmd: semodule -i /tmp/haproxy.pp
+    - name: clean
+      ansible.builtin.file:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/haproxy.pp
+        - /tmp/haproxy.te
+
+- name: enable and start haproxy-service
+  ansible.builtin.systemd: 
+    name: haproxy
+    state: restarted
+    enabled: yes
+
+- name: enable and start keepalived-service
+  ansible.builtin.systemd: 
+    name: keepalived
+    state: restarted
+    enabled: yes
