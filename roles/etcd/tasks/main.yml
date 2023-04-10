@@ -1,15 +1,11 @@
 ---
 - name: put etcd binaries
   block:
-    - name: create dir in /tmp
-      ansible.builtin.file:
-        name: /tmp/etcd
-        state: directory
     - name: unarchive
       ansible.builtin.unarchive:
         remote_src: no
         src: etcd-v3.5.7-linux-amd64.tar.gz
-        dest: /tmp/etcd
+        dest: /tmp
     - name: copy files
       ansible.builtin.copy:
         remote_src: true
@@ -17,12 +13,12 @@
         dest: "{{ item.dest }}"
         mode: 0755
       loop:
-        - { src: "/tmp/etcd/etcd-v3.5.7-linux-amd64/etcd", dest: "/usr/local/bin/etcd" }
-        - { src: "/tmp/etcd/etcd-v3.5.7-linux-amd64/etcdctl", dest: "/usr/local/bin/etcdctl" }
-        - { src: "/tmp/etcd/etcd-v3.5.7-linux-amd64/etcdutl", dest: "/usr/local/bin/etcdutl" }
+        - { src: "/tmp/etcd-v3.5.7-linux-amd64/etcd", dest: "/usr/local/bin/etcd" }
+        - { src: "/tmp/etcd-v3.5.7-linux-amd64/etcdctl", dest: "/usr/local/bin/etcdctl" }
+        - { src: "/tmp/etcd-v3.5.7-linux-amd64/etcdutl", dest: "/usr/local/bin/etcdutl" }
     - name: clean
       ansible.builtin.file:
-        name: /tmp/etcd
+        name: /tmp/etcd-v3.5.7-linux-amd64
         state: absent
 
 - name: add etcd user and group

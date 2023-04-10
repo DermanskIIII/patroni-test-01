@@ -1,20 +1,20 @@
 ---
 - hosts: all
   tasks:
-  - user:
+  - builtin.ansbible.user:
       name: ansible
       state: present
-  - lineinfile:
+  - builtin.ansbible.lineinfile:
       path: /etc/sudoers.d/ansible
       create: yes
       state: present
       line: 'ansible ALL=(ALL:ALL) NOPASSWD:ALL'
-  - file:
+  - builtin.ansbible.file:
       path: /home/ansible/.ssh
       state: directory
       owner: ansible
       group: ansible
-  - lineinfile:
+  - builtin.ansbible.lineinfile:
       path: /home/ansible/.ssh/authorized_keys
       create: yes
       state: present

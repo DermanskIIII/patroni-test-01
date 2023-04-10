@@ -5,7 +5,7 @@
       - haproxy
       - keepalived
 
-- name: put haproxy config-file
+- name: put haproxy and keepalived config-files
   ansible.builtin.template: 
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -21,7 +21,7 @@
     permanent: true
   tags: firewalld
 
-- name: allow vrrp-proto at firewalld
+- name: allow vrrp-proto rule at firewalld
   ansible.posix.firewalld:
     rich_rule: rule protocol value="vrrp" accept
     state: enabled
